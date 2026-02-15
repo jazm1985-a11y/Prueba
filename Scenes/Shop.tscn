@@ -23,6 +23,10 @@ grow_vertical = 2
 layout_mode = 2
 text = "Gold: 0"
 
+[node name="StarsLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Estrellas: 3.0"
+
 [node name="StockLabel" type="Label" parent="VBox"]
 layout_mode = 2
 text = "Stock"
@@ -34,6 +38,17 @@ text = "Pedido actual"
 [node name="FeedbackLabel" type="Label" parent="VBox"]
 layout_mode = 2
 text = "Estado"
+
+[node name="UpgradeButtons" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="UpgradeCheckoutButton" type="Button" parent="VBox/UpgradeButtons"]
+layout_mode = 2
+text = "Añadir caja"
+
+[node name="UpgradeShelfButton" type="Button" parent="VBox/UpgradeButtons"]
+layout_mode = 2
+text = "Añadir estantería"
 
 [node name="World" type="Node2D" parent="."]
 position = Vector2(40, 210)

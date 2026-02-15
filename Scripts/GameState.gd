@@ -13,6 +13,11 @@ var shop_workers := {"restocker": 0, "cashier": 0}
 var checkouts:int = 1
 var prices := {"slime": 1, "pulp": 5, "smoothie": 15}
 
+var shop_stars: float = 3.0
+var shelves: int = 1
+var max_customer_wait: float = 6.0
+var base_shop_cap := {"slime": 10, "pulp": 6, "smoothie": 4}
+
 var factory_grid_size:int = 3
 var factory_layout := {}
 var selected_building:String = ""
@@ -105,6 +110,55 @@ func hire_worker(worker_type: String) -> String:
 
 func _has_worker_key(worker_type: String) -> bool:
 	return worker_type in factory_workers or worker_type in shop_workers
+
+func try_upgrade_checkouts() -> String:
+	var cost:int = 30 + (checkouts - 1) * 20
+	if gold < cost:
+		return "Falta gold"
+	gold -= cost
+	checkouts += 1
+	emit_signal("state_changed")
+	return "OK"
+
+func try_upgrade_shelves() -> String:
+	var cost:int = 25 + (shelves - 1) * 20
+	if gold < cost:
+		return "Falta gold"
+	gold -= cost
+	shelves += 1
+	_recalculate_shop_cap()
+	emit_signal("state_changed")
+	return "OK"
+
+func _recalculate_shop_cap() -> void:
+	shop_cap["slime"] = base_shop_cap["slime"] + (shelves - 1) * 5
+	shop_cap["pulp"] = base_shop_cap["pulp"] + (shelves - 1) * 3
+	shop_cap["smoothie"] = base_shop_cap["smoothie"] + (shelves - 1) * 2
+
+func get_checkout_upgrade_cost() -> int:
+	return 30 + (checkouts - 1) * 20
+
+func get_shelf_upgrade_cost() -> int:
+	return 25 + (shelves - 1) * 20
+
+func record_customer_outcome(served: bool, wait_time: float) -> void:
+	if served:
+		if wait_time <= max_customer_wait * 0.4:
+			shop_stars = min(5.0, shop_stars + 0.18)
+		elif wait_time <= max_customer_wait:
+			shop_stars = min(5.0, shop_stars + 0.08)
+		else:
+			shop_stars = max(1.0, shop_stars - 0.08)
+	else:
+		shop_stars = max(1.0, shop_stars - 0.25)
+	emit_signal("state_changed")
+
+func get_customer_spawn_range() -> Dictionary:
+	var t: float = (shop_stars - 1.0) / 4.0
+	return {
+		"min": lerpf(8.0, 3.0, t),
+		"max": lerpf(12.0, 5.0, t)
+	}
 
 func try_add_slime_manual() -> String:
 	if not has_building("FarmerStation"):

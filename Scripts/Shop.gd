@@ -4,9 +4,12 @@ const CUSTOMER_SPEED:float = 120.0
 const WORKER_SPEED:float = 95.0
 
 @onready var gold_label: Label = $VBox/GoldLabel
+@onready var stars_label: Label = $VBox/StarsLabel
 @onready var stock_label: Label = $VBox/StockLabel
 @onready var order_label: Label = $VBox/OrderLabel
 @onready var feedback_label: Label = $VBox/FeedbackLabel
+@onready var upgrade_checkout_button: Button = $VBox/UpgradeButtons/UpgradeCheckoutButton
+@onready var upgrade_shelf_button: Button = $VBox/UpgradeButtons/UpgradeShelfButton
 @onready var world: Node2D = $World
 @onready var spawn_point: Marker2D = $World/Spawn
 @onready var queue1_point: Marker2D = $World/Queue1
@@ -29,18 +32,39 @@ var spawn_cooldown: float = 2.0
 func _ready() -> void:
 	GameState.state_changed.connect(_refresh_ui)
 	GameState.tick_processed.connect(_on_tick)
+	upgrade_checkout_button.pressed.connect(_on_upgrade_checkout_button_pressed)
+	upgrade_shelf_button.pressed.connect(_on_upgrade_shelf_button_pressed)
 	last_shop_stock = GameState.shop_stock.duplicate()
 	_refresh_worker_visuals()
 	_refresh_ui()
+	_reset_spawn_cooldown()
 
 func _process(delta: float) -> void:
 	spawn_cooldown -= delta
 	if spawn_cooldown <= 0.0:
 		_try_spawn_customer()
-		spawn_cooldown = randf_range(5.0, 8.0)
+		_reset_spawn_cooldown()
 	_update_customers(delta)
 	_update_restockers(delta)
 	_refresh_order_label()
+
+func _reset_spawn_cooldown() -> void:
+	var range_data: Dictionary = GameState.get_customer_spawn_range()
+	spawn_cooldown = randf_range(range_data["min"], range_data["max"])
+
+func _on_upgrade_checkout_button_pressed() -> void:
+	var result: String = GameState.try_upgrade_checkouts()
+	if result == "OK":
+		feedback_label.text = "Nueva caja registrada"
+	else:
+		feedback_label.text = result
+
+func _on_upgrade_shelf_button_pressed() -> void:
+	var result: String = GameState.try_upgrade_shelves()
+	if result == "OK":
+		feedback_label.text = "Nueva estantería añadida"
+	else:
+		feedback_label.text = result
 
 func _try_spawn_customer() -> void:
 	if customers.size() >= 3:
@@ -50,7 +74,8 @@ func _try_spawn_customer() -> void:
 		"node": _create_actor_visual(Color(0.35, 0.85, 1.0), "C"),
 		"state": "to_shelf",
 		"order": order,
-		"wait_counter": 0.0
+		"wait_counter": 0.0,
+		"checkout_wait": 0.0
 	}
 	customers.append(customer)
 
@@ -119,8 +144,9 @@ func _advance_customer_state(customer: Dictionary, delta: float) -> bool:
 			else:
 				customer["wait_counter"] += delta
 				feedback_label.text = "Falta input"
-				if customer["wait_counter"] >= 4.0:
+				if customer["wait_counter"] >= GameState.max_customer_wait:
 					feedback_label.text = "Cliente no encontró stock y se fue"
+					GameState.record_customer_outcome(false, customer["wait_counter"])
 					customer["state"] = "to_exit"
 		"to_queue1":
 			customer["state"] = "to_queue2"
@@ -128,11 +154,12 @@ func _advance_customer_state(customer: Dictionary, delta: float) -> bool:
 			customer["state"] = "to_counter"
 		"to_counter":
 			customer["state"] = "waiting_checkout"
-			customer["wait_counter"] = 0.0
+			customer["checkout_wait"] = 0.0
 		"waiting_checkout":
-			customer["wait_counter"] += delta
-			if customer["wait_counter"] >= 6.0:
-				feedback_label.text = "Caja lenta, cliente se va"
+			customer["checkout_wait"] += delta
+			if customer["checkout_wait"] >= GameState.max_customer_wait:
+				feedback_label.text = "No fue atendido en caja, cliente se va"
+				GameState.record_customer_outcome(false, customer["checkout_wait"])
 				customer["state"] = "to_exit"
 		"to_exit":
 			return true
@@ -152,6 +179,7 @@ func _on_tick() -> void:
 			var success: bool = GameState.try_fulfill_order(order)
 			if success:
 				feedback_label.text = "Caja cobró: %d %s" % [order["amount"], order["item"]]
+				GameState.record_customer_outcome(true, customer["checkout_wait"])
 				customer["state"] = "to_exit"
 				sales_left -= 1
 			else:
@@ -275,11 +303,19 @@ func _refresh_order_label() -> void:
 
 func _refresh_ui() -> void:
 	gold_label.text = "Gold: %d" % GameState.gold
-	stock_label.text = "Shop Stock S:%d/%d P:%d/%d M:%d/%d | Restockers:%d Cashiers:%d Checkouts:%d" % [
+	stars_label.text = "Estrellas: %.1f/5.0 | Spawn %.1f-%.1fs" % [
+		GameState.shop_stars,
+		GameState.get_customer_spawn_range()["min"],
+		GameState.get_customer_spawn_range()["max"]
+	]
+	stock_label.text = "Shop Stock S:%d/%d P:%d/%d M:%d/%d | Estanterías:%d | Restockers:%d Cashiers:%d Checkouts:%d" % [
 		GameState.shop_stock["slime"], GameState.shop_cap["slime"],
 		GameState.shop_stock["pulp"], GameState.shop_cap["pulp"],
 		GameState.shop_stock["smoothie"], GameState.shop_cap["smoothie"],
+		GameState.shelves,
 		GameState.shop_workers["restocker"],
 		GameState.shop_workers["cashier"],
 		GameState.checkouts
 	]
+	upgrade_checkout_button.text = "Añadir caja (%d gold)" % GameState.get_checkout_upgrade_cost()
+	upgrade_shelf_button.text = "Añadir estantería (%d gold)" % GameState.get_shelf_upgrade_cost()
