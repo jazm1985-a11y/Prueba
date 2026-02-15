@@ -23,6 +23,10 @@ grow_vertical = 2
 layout_mode = 2
 text = "Stock"
 
+[node name="StationStatusLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Estaciones"
+
 [node name="PlaceButtons" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
@@ -65,6 +69,57 @@ text = "2 pulp -> 1 smoothie"
 [node name="SendBundleButton" type="Button" parent="VBox/ManualButtons"]
 layout_mode = 2
 text = "Enviar 1 de cada item"
+
+[node name="CollectButtons" type="GridContainer" parent="VBox"]
+layout_mode = 2
+columns = 3
+
+[node name="CollectSlimeButton" type="Button" parent="VBox/CollectButtons"]
+layout_mode = 2
+text = "Recoger Slime"
+
+[node name="CollectPulpButton" type="Button" parent="VBox/CollectButtons"]
+layout_mode = 2
+text = "Recoger Pulpa"
+
+[node name="CollectSmoothieButton" type="Button" parent="VBox/CollectButtons"]
+layout_mode = 2
+text = "Recoger Smoothie"
+
+[node name="CollectAguaButton" type="Button" parent="VBox/CollectButtons"]
+layout_mode = 2
+text = "Recoger Agua"
+
+[node name="CollectSalButton" type="Button" parent="VBox/CollectButtons"]
+layout_mode = 2
+text = "Recoger Sal"
+
+[node name="CollectUnguentoButton" type="Button" parent="VBox/CollectButtons"]
+layout_mode = 2
+text = "Recoger Ungüento"
+
+[node name="TransferButtons" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="TransferSlimeButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover slime a tienda"
+
+[node name="TransferPulpButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover pulp a tienda"
+
+[node name="TransferSmoothieButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover smoothie a tienda"
+
+[node name="TransferSalButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover sal a tienda"
+
+[node name="TransferUnguentoButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover ungüento a tienda"
 
 [node name="StatusLabel" type="Label" parent="VBox"]
 layout_mode = 2

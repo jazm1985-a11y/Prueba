@@ -25,7 +25,7 @@ text = "Gold: 0"
 
 [node name="StarsLabel" type="Label" parent="VBox"]
 layout_mode = 2
-text = "Estrellas: 3.0"
+text = "Estrellas: 1"
 
 [node name="StockLabel" type="Label" parent="VBox"]
 layout_mode = 2
@@ -39,6 +39,21 @@ text = "Pedido actual"
 layout_mode = 2
 text = "Estado"
 
+[node name="ActionButtons" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="ServeButton" type="Button" parent="VBox/ActionButtons"]
+layout_mode = 2
+text = "Atender"
+
+[node name="HireRestockerButton" type="Button" parent="VBox/ActionButtons"]
+layout_mode = 2
+text = "Contratar restocker (500)"
+
+[node name="HireCashierButton" type="Button" parent="VBox/ActionButtons"]
+layout_mode = 2
+text = "Contratar cashier (800)"
+
 [node name="UpgradeButtons" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
@@ -50,65 +65,72 @@ text = "Añadir caja"
 layout_mode = 2
 text = "Añadir estantería"
 
+[node name="UpgradeMaxCustomersButton" type="Button" parent="VBox/UpgradeButtons"]
+layout_mode = 2
+text = "Más clientes visibles"
+
+[node name="ClientSlots" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+
 [node name="World" type="Node2D" parent="."]
-position = Vector2(40, 210)
+position = Vector2(40, 420)
 
 [node name="Floor" type="ColorRect" parent="World"]
-position = Vector2(0, 120)
+position = Vector2(0, 40)
 size = Vector2(1160, 220)
 color = Color(0.16, 0.16, 0.18, 1)
 
 [node name="ShelfSlimeVisual" type="ColorRect" parent="World"]
-position = Vector2(250, 120)
+position = Vector2(250, 40)
 size = Vector2(70, 90)
 color = Color(0.1, 0.8, 0.3, 1)
 
 [node name="ShelfPulpVisual" type="ColorRect" parent="World"]
-position = Vector2(360, 120)
+position = Vector2(360, 40)
 size = Vector2(70, 90)
 color = Color(1, 0.75, 0.25, 1)
 
 [node name="ShelfSmoothieVisual" type="ColorRect" parent="World"]
-position = Vector2(470, 120)
+position = Vector2(470, 40)
 size = Vector2(70, 90)
 color = Color(0.8, 0.2, 0.9, 1)
 
 [node name="CounterVisual" type="ColorRect" parent="World"]
-position = Vector2(760, 150)
+position = Vector2(760, 70)
 size = Vector2(140, 60)
 color = Color(0.5, 0.3, 0.2, 1)
 
 [node name="StockRoomVisual" type="ColorRect" parent="World"]
-position = Vector2(20, 130)
+position = Vector2(20, 50)
 size = Vector2(120, 80)
 color = Color(0.25, 0.25, 0.35, 1)
 
 [node name="Spawn" type="Marker2D" parent="World"]
-position = Vector2(60, 300)
+position = Vector2(60, 220)
 
 [node name="StockRoom" type="Marker2D" parent="World"]
-position = Vector2(80, 180)
+position = Vector2(80, 100)
 
 [node name="ShelfSlime" type="Marker2D" parent="World"]
-position = Vector2(285, 220)
+position = Vector2(285, 140)
 
 [node name="ShelfPulp" type="Marker2D" parent="World"]
-position = Vector2(395, 220)
+position = Vector2(395, 140)
 
 [node name="ShelfSmoothie" type="Marker2D" parent="World"]
-position = Vector2(505, 220)
+position = Vector2(505, 140)
 
 [node name="Queue1" type="Marker2D" parent="World"]
-position = Vector2(620, 280)
+position = Vector2(620, 200)
 
 [node name="Queue2" type="Marker2D" parent="World"]
-position = Vector2(700, 280)
+position = Vector2(700, 200)
 
 [node name="Counter" type="Marker2D" parent="World"]
-position = Vector2(800, 220)
+position = Vector2(800, 140)
 
 [node name="CashierSpot" type="Marker2D" parent="World"]
-position = Vector2(860, 220)
+position = Vector2(860, 140)
 
 [node name="Exit" type="Marker2D" parent="World"]
-position = Vector2(1100, 300)
+position = Vector2(1100, 220)
