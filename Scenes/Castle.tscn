@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3 uid="uid://castle"]
+
+[ext_resource type="Script" path="res://Scripts/Castle.gd" id="1"]
+
+[node name="Castle" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GoldLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Gold: 0"
+
+[node name="MessageLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = ""
+
+[node name="WorkersTitle" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Contratar workers"
+
+[node name="WorkerButtons" type="GridContainer" parent="VBoxContainer"]
+layout_mode = 2
+columns = 3
+
+[node name="Farmer" type="Button" parent="VBoxContainer/WorkerButtons"]
+layout_mode = 2
+text = "+ Farmer"
+
+[node name="Juicer" type="Button" parent="VBoxContainer/WorkerButtons"]
+layout_mode = 2
+text = "+ Juicer"
+
+[node name="Mixer" type="Button" parent="VBoxContainer/WorkerButtons"]
+layout_mode = 2
+text = "+ Mixer"
+
+[node name="Restocker" type="Button" parent="VBoxContainer/WorkerButtons"]
+layout_mode = 2
+text = "+ Restocker"
+
+[node name="Cashier" type="Button" parent="VBoxContainer/WorkerButtons"]
+layout_mode = 2
+text = "+ Cashier"
+
+[node name="NavTitle" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Navegación"
+
+[node name="NavButtons" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="Factory" type="Button" parent="VBoxContainer/NavButtons"]
+layout_mode = 2
+text = "Ir a Factory"
+
+[node name="Shop" type="Button" parent="VBoxContainer/NavButtons"]
+layout_mode = 2
+text = "Ir a Shop"
+
+[connection signal="pressed" from="VBoxContainer/WorkerButtons/Farmer" to="." method="_on_farmer_pressed"]
+[connection signal="pressed" from="VBoxContainer/WorkerButtons/Juicer" to="." method="_on_juicer_pressed"]
+[connection signal="pressed" from="VBoxContainer/WorkerButtons/Mixer" to="." method="_on_mixer_pressed"]
+[connection signal="pressed" from="VBoxContainer/WorkerButtons/Restocker" to="." method="_on_restocker_pressed"]
+[connection signal="pressed" from="VBoxContainer/WorkerButtons/Cashier" to="." method="_on_cashier_pressed"]
+[connection signal="pressed" from="VBoxContainer/NavButtons/Factory" to="." method="_on_factory_pressed"]
+[connection signal="pressed" from="VBoxContainer/NavButtons/Shop" to="." method="_on_shop_pressed"]
