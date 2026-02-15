@@ -1,0 +1,26 @@
+name: Godot headless check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  open-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Godot 4.6 (headless)
+        run: |
+          set -e
+          GODOT_VERSION="4.6-stable"
+          GODOT_ZIP="Godot_v4.6-stable_linux.x86_64.zip"
+          GODOT_URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${GODOT_ZIP}"
+          curl -L "$GODOT_URL" -o godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+
+      - name: Open project headless
+        run: |
+          ./Godot_v4.6-stable_linux.x86_64 --headless --path . --quit
