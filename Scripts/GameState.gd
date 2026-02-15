@@ -49,7 +49,7 @@ func _run_juicers() -> void:
 	var space:int = factory_cap["pulp"] - factory_stock["pulp"]
 	if space <= 0:
 		return
-	var possible_from_input:int = factory_stock["slime"] / 2
+	var possible_from_input:int = int(factory_stock["slime"] / 2)
 	var conversions:int = min(workers, min(space, possible_from_input))
 	if conversions <= 0:
 		return
@@ -63,7 +63,7 @@ func _run_mixers() -> void:
 	var space:int = factory_cap["smoothie"] - factory_stock["smoothie"]
 	if space <= 0:
 		return
-	var possible_from_input:int = factory_stock["pulp"] / 2
+	var possible_from_input:int = int(factory_stock["pulp"] / 2)
 	var conversions:int = min(workers, min(space, possible_from_input))
 	if conversions <= 0:
 		return
