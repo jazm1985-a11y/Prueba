@@ -69,7 +69,7 @@ func _process(delta: float) -> void:
 	_update_customer_patience(delta)
 	_update_customer_motion(delta)
 	_update_restockers(delta)
-	if GameState.cashier_hired and serve_cooldown <= 0.0:
+	if GameState.shop_workers["cashier"] > 0 and serve_cooldown <= 0.0:
 		_try_serve_first_customer()
 	_refresh_order_label()
 	_refresh_ui()
@@ -178,7 +178,7 @@ func _get_customer_target(customer: Dictionary, index: int) -> Vector2:
 	return queue1_point.position
 
 func _on_serve_button_pressed() -> void:
-	if GameState.cashier_hired:
+	if GameState.shop_workers["cashier"] > 0:
 		feedback_label.text = "Bloqueado"
 		return
 	if serve_cooldown > 0.0:
@@ -388,12 +388,12 @@ func _refresh_ui() -> void:
 		serve_cooldown,
 		maxf(spawn_cooldown, 0.0)
 	]
-	serve_button.disabled = GameState.cashier_hired or customers.is_empty() or serve_cooldown > 0.0
+	serve_button.disabled = GameState.shop_workers["cashier"] > 0 or customers.is_empty() or serve_cooldown > 0.0
 	upgrade_checkout_button.text = "Añadir caja (%d gold)" % GameState.get_checkout_upgrade_cost()
 	upgrade_shelf_button.text = "Añadir estantería (%d gold)" % GameState.get_shelf_upgrade_cost()
 	upgrade_max_customers_button.text = "Más clientes (%d gold)" % GameState.get_upgrade_max_visible_customers_cost()
 	hire_restocker_button.text = "Contratar restocker (%d)" % GameState.get_restocker_hire_cost()
 	hire_cashier_button.text = "Contratar cashier (%d)" % GameState.get_cashier_hire_cost()
-	hire_restocker_button.disabled = GameState.restocker_hired
-	hire_cashier_button.disabled = GameState.cashier_hired
+	hire_restocker_button.disabled = false
+	hire_cashier_button.disabled = false
 	_refresh_client_slots()

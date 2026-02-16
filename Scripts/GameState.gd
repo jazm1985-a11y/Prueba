@@ -151,16 +151,19 @@ func _run_mixers() -> void:
 	factory_stock["smoothie"] += conversions
 
 func _run_restockers() -> void:
-	if not restocker_hired:
+	if shop_workers["restocker"] <= 0:
 		return
+	var moves_left:int = shop_workers["restocker"]
 	var moved := true
-	while moved:
+	while moved and moves_left > 0:
 		moved = false
 		for item in ["unguento", "smoothie", "sal", "pulp", "slime"]:
 			if factory_stock[item] > 0 and shop_stock[item] < shop_cap[item]:
 				factory_stock[item] -= 1
 				shop_stock[item] += 1
+				moves_left -= 1
 				moved = true
+				break
 
 func can_hire_worker(worker_type: String) -> bool:
 	return gold >= 10 and (_has_worker_key(worker_type))
@@ -184,35 +187,31 @@ func _has_worker_key(worker_type: String) -> bool:
 	return worker_type in factory_workers or worker_type in shop_workers
 
 func try_hire_restocker() -> String:
-	if restocker_hired:
-		return "Capacidad llena"
 	var cost:int = get_restocker_hire_cost()
 	if gold < cost:
 		return "Falta gold"
 	gold -= cost
-	restocker_hired = true
-	shop_workers["restocker"] = 1
+	shop_workers["restocker"] += 1
+	restocker_hired = shop_workers["restocker"] > 0
 	emit_signal("state_changed")
 	return "OK"
 
 func try_hire_cashier() -> String:
-	if cashier_hired:
-		return "Capacidad llena"
 	var cost:int = get_cashier_hire_cost()
 	if gold < cost:
 		return "Falta gold"
 	gold -= cost
-	cashier_hired = true
-	shop_workers["cashier"] = 1
+	shop_workers["cashier"] += 1
+	cashier_hired = shop_workers["cashier"] > 0
 	emit_signal("state_changed")
 	return "OK"
 
 
 func get_restocker_hire_cost() -> int:
-	return 10
+	return int(round(10.0 * pow(1.6, shop_workers["restocker"])))
 
 func get_cashier_hire_cost() -> int:
-	return 10
+	return int(round(10.0 * pow(1.7, shop_workers["cashier"])))
 
 func try_upgrade_checkouts() -> String:
 	var cost:int = 30 + (checkouts - 1) * 20
@@ -379,7 +378,7 @@ func try_fulfill_order(order: Dictionary) -> bool:
 	return true
 
 func get_cashier_sales_per_tick() -> int:
-	if not cashier_hired:
+	if shop_workers["cashier"] <= 0:
 		return 0
 	return min(shop_workers["cashier"], checkouts)
 
@@ -390,6 +389,7 @@ func save_game() -> void:
 		"factory_stock": factory_stock,
 		"shop_stock": shop_stock,
 		"max_visible_customers": max_visible_customers,
+		"shop_workers": shop_workers,
 		"restocker_hired": restocker_hired,
 		"cashier_hired": cashier_hired,
 		"checkouts": checkouts,
@@ -417,11 +417,12 @@ func load_game() -> void:
 	for key in shop_stock.keys():
 		shop_stock[key] = int(s_stock.get(key, shop_stock[key]))
 	max_visible_customers = int(parsed.get("max_visible_customers", max_visible_customers))
-	restocker_hired = bool(parsed.get("restocker_hired", restocker_hired))
-	cashier_hired = bool(parsed.get("cashier_hired", cashier_hired))
+	var loaded_workers: Dictionary = parsed.get("shop_workers", {})
+	shop_workers["restocker"] = int(loaded_workers.get("restocker", 1 if bool(parsed.get("restocker_hired", restocker_hired)) else 0))
+	shop_workers["cashier"] = int(loaded_workers.get("cashier", 1 if bool(parsed.get("cashier_hired", cashier_hired)) else 0))
+	restocker_hired = shop_workers["restocker"] > 0
+	cashier_hired = shop_workers["cashier"] > 0
 	checkouts = int(parsed.get("checkouts", checkouts))
-	shop_workers["restocker"] = 1 if restocker_hired else 0
-	shop_workers["cashier"] = 1 if cashier_hired else 0
 	_apply_offline_progress(int(parsed.get("timestamp", Time.get_unix_time_from_system())))
 	emit_signal("state_changed")
 
