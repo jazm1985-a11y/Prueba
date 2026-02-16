@@ -396,15 +396,15 @@ func load_game() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file == null:
 		return
-	var parsed := JSON.parse_string(file.get_as_text())
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	gold = int(parsed.get("gold", gold))
 	reputation = int(parsed.get("reputation", reputation))
-	var f_stock = parsed.get("factory_stock", {})
+	var f_stock: Dictionary = parsed.get("factory_stock", {})
 	for key in factory_stock.keys():
 		factory_stock[key] = int(f_stock.get(key, factory_stock[key]))
-	var s_stock = parsed.get("shop_stock", {})
+	var s_stock: Dictionary = parsed.get("shop_stock", {})
 	for key in shop_stock.keys():
 		shop_stock[key] = int(s_stock.get(key, shop_stock[key]))
 	max_visible_customers = int(parsed.get("max_visible_customers", max_visible_customers))
