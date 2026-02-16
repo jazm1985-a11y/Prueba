@@ -67,11 +67,11 @@ func _process(delta: float) -> void:
 	_refresh_ui()
 
 func _on_hire_restocker_button_pressed() -> void:
-	var result := GameState.try_hire_restocker()
+	var result := GameState.hire_worker("restocker")
 	feedback_label.text = "Restocker contratado" if result == "OK" else result
 
 func _on_hire_cashier_button_pressed() -> void:
-	var result := GameState.try_hire_cashier()
+	var result := GameState.hire_worker("cashier")
 	feedback_label.text = "Cashier contratado" if result == "OK" else result
 
 func _on_upgrade_checkout_button_pressed() -> void:
@@ -317,6 +317,8 @@ func _refresh_ui() -> void:
 	upgrade_checkout_button.text = "Añadir caja (%d gold)" % GameState.get_checkout_upgrade_cost()
 	upgrade_shelf_button.text = "Añadir estantería (%d gold)" % GameState.get_shelf_upgrade_cost()
 	upgrade_max_customers_button.text = "Más clientes (%d gold)" % GameState.get_upgrade_max_visible_customers_cost()
+	hire_restocker_button.text = "Contratar restocker (%d)" % GameState.get_restocker_hire_cost()
+	hire_cashier_button.text = "Contratar cashier (%d)" % GameState.get_cashier_hire_cost()
 	hire_restocker_button.disabled = GameState.restocker_hired
 	hire_cashier_button.disabled = GameState.cashier_hired
 	_refresh_client_slots()

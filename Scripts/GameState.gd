@@ -186,9 +186,10 @@ func _has_worker_key(worker_type: String) -> bool:
 func try_hire_restocker() -> String:
 	if restocker_hired:
 		return "Capacidad llena"
-	if gold < 500:
+	var cost:int = get_restocker_hire_cost()
+	if gold < cost:
 		return "Falta gold"
-	gold -= 500
+	gold -= cost
 	restocker_hired = true
 	shop_workers["restocker"] = 1
 	emit_signal("state_changed")
@@ -197,13 +198,21 @@ func try_hire_restocker() -> String:
 func try_hire_cashier() -> String:
 	if cashier_hired:
 		return "Capacidad llena"
-	if gold < 800:
+	var cost:int = get_cashier_hire_cost()
+	if gold < cost:
 		return "Falta gold"
-	gold -= 800
+	gold -= cost
 	cashier_hired = true
 	shop_workers["cashier"] = 1
 	emit_signal("state_changed")
 	return "OK"
+
+
+func get_restocker_hire_cost() -> int:
+	return 10
+
+func get_cashier_hire_cost() -> int:
+	return 10
 
 func try_upgrade_checkouts() -> String:
 	var cost:int = 30 + (checkouts - 1) * 20

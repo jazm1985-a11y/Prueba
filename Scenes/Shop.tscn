@@ -48,11 +48,11 @@ text = "Atender"
 
 [node name="HireRestockerButton" type="Button" parent="VBox/ActionButtons"]
 layout_mode = 2
-text = "Contratar restocker (500)"
+text = "Contratar restocker (10)"
 
 [node name="HireCashierButton" type="Button" parent="VBox/ActionButtons"]
 layout_mode = 2
-text = "Contratar cashier (800)"
+text = "Contratar cashier (10)"
 
 [node name="UpgradeButtons" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
