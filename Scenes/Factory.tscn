@@ -27,6 +27,10 @@ text = "Stock"
 layout_mode = 2
 text = "Pool"
 
+[node name="SelectedCellLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Celda seleccionada: ninguna"
+
 [node name="SelectorButtons" type="GridContainer" parent="VBox"]
 layout_mode = 2
 columns = 4
@@ -63,10 +67,45 @@ text = "Storage"
 layout_mode = 2
 text = "Vaciar"
 
-[node name="Grid" type="GridContainer" parent="VBox"]
+[node name="ApplyBuildButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Construir tipo seleccionado en celda"
+
+[node name="MainSplit" type="HSplitContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GridPanel" type="VBoxContainer" parent="VBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GridTitle" type="Label" parent="VBox/MainSplit/GridPanel"]
+layout_mode = 2
+text = "Grid de diseño"
+
+[node name="Grid" type="GridContainer" parent="VBox/MainSplit/GridPanel"]
 layout_mode = 2
 size_flags_vertical = 3
 columns = 3
+
+[node name="WorldPanel" type="VBoxContainer" parent="VBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WorldTitle" type="Label" parent="VBox/MainSplit/WorldPanel"]
+layout_mode = 2
+text = "Flujo visual de workers"
+
+[node name="FlowLabel" type="Label" parent="VBox/MainSplit/WorldPanel"]
+layout_mode = 2
+text = "Flujo:"
+
+[node name="World" type="Node2D" parent="VBox/MainSplit/WorldPanel"]
+position = Vector2(10, 80)
+
+[node name="WorldGrid" type="Node2D" parent="VBox/MainSplit/WorldPanel/World"]
+
+[node name="WorldWorkers" type="Node2D" parent="VBox/MainSplit/WorldPanel/World"]
 
 [node name="WorkerButtons" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
