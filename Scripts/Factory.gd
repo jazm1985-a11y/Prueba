@@ -70,7 +70,7 @@ func _rebuild_grid() -> void:
 			var b := Button.new()
 			b.custom_minimum_size = Vector2(92, 92)
 			b.text = GameState.get_factory_cell_label(id)
-			b.pressed.connect(func() -> void: _on_grid_cell_pressed(id))
+			b.pressed.connect(_on_grid_cell_pressed.bind(id))
 			grid.add_child(b)
 
 func _on_grid_cell_pressed(cell_id: String) -> void:

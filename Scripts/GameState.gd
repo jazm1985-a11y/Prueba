@@ -129,6 +129,7 @@ func get_factory_cell_label(cell_id: String) -> String:
 	return "%s\nW:%d" % [t.capitalize(), w]
 
 func _update_factory_cells(delta: float) -> void:
+	var changed: bool = false
 	for cell_id in factory_cell_types.keys():
 		var station_type:String = factory_cell_types[cell_id]
 		if station_type == "storage":
@@ -147,7 +148,9 @@ func _update_factory_cells(delta: float) -> void:
 				factory_cell_progress[cell_id] = 0.99
 				break
 			factory_cell_progress[cell_id] -= 1.0
-	emit_signal("state_changed")
+			changed = true
+	if changed:
+		emit_signal("state_changed")
 
 func _get_factory_efficiency_for_cell(cell_id: String, station_type: String) -> float:
 	var target_type:String = _get_station_primary_target(station_type)
