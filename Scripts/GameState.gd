@@ -27,6 +27,12 @@ var factory_grid_size:int = 3
 var factory_layout := {}
 var selected_building:String = ""
 
+var factory_worker_pool_total:int = 0
+var factory_worker_pool_unassigned:int = 0
+var factory_cell_types := {}
+var factory_cell_workers := {}
+var factory_cell_progress := {}
+
 var _tick_accumulator:float = 0.0
 var _save_accumulator:float = 0.0
 const SAVE_PATH := "user://save_game.json"
@@ -37,7 +43,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_tick_accumulator += delta
 	_save_accumulator += delta
-	_update_station_production(delta)
+	_update_factory_cells(delta)
 	while _tick_accumulator >= 1.0:
 		_tick_accumulator -= 1.0
 		run_tick()
@@ -57,34 +63,153 @@ func run_tick() -> void:
 	emit_signal("tick_processed")
 	emit_signal("state_changed")
 
-func _update_station_production(delta: float) -> void:
-	for station in station_progress.keys():
-		if not _can_station_progress(station):
+# --- FACTORY GRID 2.0 ---
+
+func get_factory_worker_hire_cost() -> int:
+	return int(round(10.0 * pow(2.0, factory_worker_pool_total)))
+
+func try_hire_factory_worker() -> String:
+	var cost:int = get_factory_worker_hire_cost()
+	if gold < cost:
+		return "Falta gold"
+	gold -= cost
+	factory_worker_pool_total += 1
+	factory_worker_pool_unassigned += 1
+	emit_signal("state_changed")
+	return "OK"
+
+func get_factory_valid_station_types() -> Array[String]:
+	return ["slime", "pulp", "smoothie", "agua", "sal", "unguento", "storage", "empty"]
+
+func set_factory_cell_type(cell_id: String, station_type: String) -> String:
+	if not station_type in get_factory_valid_station_types():
+		return "Bloqueado"
+	if station_type == "empty":
+		factory_worker_pool_unassigned += int(factory_cell_workers.get(cell_id, 0))
+		factory_cell_workers.erase(cell_id)
+		factory_cell_types.erase(cell_id)
+		factory_cell_progress.erase(cell_id)
+		emit_signal("state_changed")
+		return "OK"
+	factory_cell_types[cell_id] = station_type
+	if not factory_cell_workers.has(cell_id):
+		factory_cell_workers[cell_id] = 0
+	if not factory_cell_progress.has(cell_id):
+		factory_cell_progress[cell_id] = 0.0
+	emit_signal("state_changed")
+	return "OK"
+
+func assign_worker_to_cell(cell_id: String) -> String:
+	if not factory_cell_types.has(cell_id):
+		return "Bloqueado"
+	if factory_cell_types[cell_id] == "storage":
+		return "Bloqueado"
+	if factory_worker_pool_unassigned <= 0:
+		return "Falta input"
+	factory_worker_pool_unassigned -= 1
+	factory_cell_workers[cell_id] = int(factory_cell_workers.get(cell_id, 0)) + 1
+	emit_signal("state_changed")
+	return "OK"
+
+func unassign_worker_from_cell(cell_id: String) -> String:
+	if int(factory_cell_workers.get(cell_id, 0)) <= 0:
+		return "Falta input"
+	factory_cell_workers[cell_id] -= 1
+	factory_worker_pool_unassigned += 1
+	emit_signal("state_changed")
+	return "OK"
+
+func get_factory_cell_label(cell_id: String) -> String:
+	if not factory_cell_types.has(cell_id):
+		return "Vacío"
+	var t:String = factory_cell_types[cell_id]
+	var w:int = int(factory_cell_workers.get(cell_id, 0))
+	if t == "storage":
+		return "Storage"
+	return "%s\nW:%d" % [t.capitalize(), w]
+
+func _update_factory_cells(delta: float) -> void:
+	for cell_id in factory_cell_types.keys():
+		var station_type:String = factory_cell_types[cell_id]
+		if station_type == "storage":
 			continue
-		station_progress[station] += delta
-		while station_progress[station] >= station_time[station]:
-			if _get_factory_total(station) >= factory_cap[station]:
-				station_progress[station] = station_time[station]
+		var workers:int = int(factory_cell_workers.get(cell_id, 0))
+		if workers <= 0:
+			continue
+		var efficiency := _get_factory_efficiency_for_cell(cell_id, station_type)
+		if efficiency <= 0.0:
+			continue
+		var progress_gain: float = (delta * float(workers) * efficiency) / station_time[station_type]
+		factory_cell_progress[cell_id] = float(factory_cell_progress.get(cell_id, 0.0)) + progress_gain
+		while factory_cell_progress[cell_id] >= 1.0:
+			var produced: bool = _try_produce_from_cell(station_type)
+			if not produced:
+				factory_cell_progress[cell_id] = 0.99
 				break
-			station_progress[station] -= station_time[station]
-			station_ready[station] += 1
+			factory_cell_progress[cell_id] -= 1.0
 	emit_signal("state_changed")
 
-func _can_station_progress(station: String) -> bool:
-	if _get_factory_total(station) >= factory_cap[station]:
+func _get_factory_efficiency_for_cell(cell_id: String, station_type: String) -> float:
+	var target_type:String = _get_station_primary_target(station_type)
+	var dist:int = _get_distance_to_closest_station(cell_id, target_type)
+	return 1.0 / max(1.0, 1.0 + float(dist) * 0.25)
+
+func _get_station_primary_target(station_type: String) -> String:
+	if station_type == "slime":
+		return "pulp"
+	if station_type == "pulp":
+		return "smoothie"
+	if station_type == "agua":
+		return "sal"
+	if station_type == "sal":
+		return "unguento"
+	if station_type == "smoothie" or station_type == "unguento":
+		return "storage"
+	return "storage"
+
+func _get_distance_to_closest_station(cell_id: String, target_type: String) -> int:
+	var origin: Vector2i = _cell_id_to_vec2i(cell_id)
+	var best:int = 999999
+	for other_id in factory_cell_types.keys():
+		if String(factory_cell_types[other_id]) != target_type:
+			continue
+		var v: Vector2i = _cell_id_to_vec2i(other_id)
+		var d:int = absi(v.x - origin.x) + absi(v.y - origin.y)
+		best = min(best, d)
+	if best == 999999:
+		return 3
+	return best
+
+func _cell_id_to_vec2i(cell_id: String) -> Vector2i:
+	var parts := cell_id.split("_")
+	if parts.size() != 2:
+		return Vector2i.ZERO
+	return Vector2i(int(parts[0]), int(parts[1]))
+
+func _try_produce_from_cell(station_type: String) -> bool:
+	if factory_stock[station_type] >= factory_cap[station_type]:
 		return false
-	if station == "pulp":
-		return factory_stock["slime"] >= 2
-	if station == "smoothie":
-		return factory_stock["pulp"] >= 2
-	if station == "sal":
-		return factory_stock["agua"] >= 2
-	if station == "unguento":
-		return factory_stock["pulp"] >= 1 and factory_stock["sal"] >= 1
+	if station_type == "pulp":
+		if factory_stock["slime"] < 2:
+			return false
+		factory_stock["slime"] -= 2
+	elif station_type == "smoothie":
+		if factory_stock["pulp"] < 2:
+			return false
+		factory_stock["pulp"] -= 2
+	elif station_type == "sal":
+		if factory_stock["agua"] < 2:
+			return false
+		factory_stock["agua"] -= 2
+	elif station_type == "unguento":
+		if factory_stock["pulp"] < 1 or factory_stock["sal"] < 1:
+			return false
+		factory_stock["pulp"] -= 1
+		factory_stock["sal"] -= 1
+	factory_stock[station_type] += 1
 	return true
 
-func _get_factory_total(item: String) -> int:
-	return factory_stock[item] + station_ready[item]
+# --- LEGACY/AUX PRODUCTION METHODS ---
 
 func collect_station(station: String) -> String:
 	if station_ready.get(station, 0) <= 0:
@@ -165,6 +290,8 @@ func _run_restockers() -> void:
 				moved = true
 				break
 
+# --- HIRING / SHOP ---
+
 func can_hire_worker(worker_type: String) -> bool:
 	return gold >= 10 and (_has_worker_key(worker_type))
 
@@ -205,7 +332,6 @@ func try_hire_cashier() -> String:
 	cashier_hired = shop_workers["cashier"] > 0
 	emit_signal("state_changed")
 	return "OK"
-
 
 func get_restocker_hire_cost() -> int:
 	return int(round(10.0 * pow(1.6, shop_workers["restocker"])))
@@ -281,6 +407,8 @@ func get_customer_pool() -> Array:
 	if reputation >= 80:
 		pool.append({"item": "unguento", "min": 1, "max": 1})
 	return pool
+
+# --- TRANSFERS / SALES ---
 
 func try_transfer_to_shop(item: String) -> String:
 	if item == "agua":
@@ -382,6 +510,8 @@ func get_cashier_sales_per_tick() -> int:
 		return 0
 	return min(shop_workers["cashier"], checkouts)
 
+# --- SAVE / LOAD ---
+
 func save_game() -> void:
 	var data := {
 		"gold": gold,
@@ -390,9 +520,12 @@ func save_game() -> void:
 		"shop_stock": shop_stock,
 		"max_visible_customers": max_visible_customers,
 		"shop_workers": shop_workers,
-		"restocker_hired": restocker_hired,
-		"cashier_hired": cashier_hired,
 		"checkouts": checkouts,
+		"factory_worker_pool_total": factory_worker_pool_total,
+		"factory_worker_pool_unassigned": factory_worker_pool_unassigned,
+		"factory_cell_types": factory_cell_types,
+		"factory_cell_workers": factory_cell_workers,
+		"factory_cell_progress": factory_cell_progress,
 		"timestamp": Time.get_unix_time_from_system()
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -418,11 +551,18 @@ func load_game() -> void:
 		shop_stock[key] = int(s_stock.get(key, shop_stock[key]))
 	max_visible_customers = int(parsed.get("max_visible_customers", max_visible_customers))
 	var loaded_workers: Dictionary = parsed.get("shop_workers", {})
-	shop_workers["restocker"] = int(loaded_workers.get("restocker", 1 if bool(parsed.get("restocker_hired", restocker_hired)) else 0))
-	shop_workers["cashier"] = int(loaded_workers.get("cashier", 1 if bool(parsed.get("cashier_hired", cashier_hired)) else 0))
+	shop_workers["restocker"] = int(loaded_workers.get("restocker", shop_workers["restocker"]))
+	shop_workers["cashier"] = int(loaded_workers.get("cashier", shop_workers["cashier"]))
 	restocker_hired = shop_workers["restocker"] > 0
 	cashier_hired = shop_workers["cashier"] > 0
 	checkouts = int(parsed.get("checkouts", checkouts))
+
+	factory_worker_pool_total = int(parsed.get("factory_worker_pool_total", factory_worker_pool_total))
+	factory_worker_pool_unassigned = int(parsed.get("factory_worker_pool_unassigned", factory_worker_pool_unassigned))
+	factory_cell_types = parsed.get("factory_cell_types", factory_cell_types)
+	factory_cell_workers = parsed.get("factory_cell_workers", factory_cell_workers)
+	factory_cell_progress = parsed.get("factory_cell_progress", factory_cell_progress)
+
 	_apply_offline_progress(int(parsed.get("timestamp", Time.get_unix_time_from_system())))
 	emit_signal("state_changed")
 

@@ -1,57 +1,55 @@
 extends Control
 
 @onready var stock_label: Label = $VBox/StockLabel
-@onready var station_status_label: Label = $VBox/StationStatusLabel
+@onready var pool_label: Label = $VBox/PoolLabel
 @onready var status_label: Label = $VBox/StatusLabel
 @onready var grid: GridContainer = $VBox/Grid
 
+var selected_station_type:String = "slime"
+var selected_cell_id:String = ""
+
 func _ready() -> void:
-	$VBox/PlaceButtons/FarmerStationButton.pressed.connect(func() -> void: _select_building("FarmerStation"))
-	$VBox/PlaceButtons/JuicerStationButton.pressed.connect(func() -> void: _select_building("JuicerStation"))
-	$VBox/PlaceButtons/MixerStationButton.pressed.connect(func() -> void: _select_building("MixerStation"))
-	$VBox/ExpandButton.pressed.connect(_expand_grid)
-	$VBox/ManualButtons/AddSlimeButton.pressed.connect(_manual_slime)
-	$VBox/ManualButtons/MakePulpButton.pressed.connect(_manual_pulp)
-	$VBox/ManualButtons/MakeSmoothieButton.pressed.connect(_manual_smoothie)
-	$VBox/ManualButtons/SendBundleButton.pressed.connect(_send_bundle)
-	$VBox/CollectButtons/CollectSlimeButton.pressed.connect(func() -> void: _collect_station("slime"))
-	$VBox/CollectButtons/CollectPulpButton.pressed.connect(func() -> void: _collect_station("pulp"))
-	$VBox/CollectButtons/CollectSmoothieButton.pressed.connect(func() -> void: _collect_station("smoothie"))
-	$VBox/CollectButtons/CollectAguaButton.pressed.connect(func() -> void: _collect_station("agua"))
-	$VBox/CollectButtons/CollectSalButton.pressed.connect(func() -> void: _collect_station("sal"))
-	$VBox/CollectButtons/CollectUnguentoButton.pressed.connect(func() -> void: _collect_station("unguento"))
+	$VBox/SelectorButtons/SelectSlimeButton.pressed.connect(func() -> void: _select_station_type("slime"))
+	$VBox/SelectorButtons/SelectPulpButton.pressed.connect(func() -> void: _select_station_type("pulp"))
+	$VBox/SelectorButtons/SelectSmoothieButton.pressed.connect(func() -> void: _select_station_type("smoothie"))
+	$VBox/SelectorButtons/SelectAguaButton.pressed.connect(func() -> void: _select_station_type("agua"))
+	$VBox/SelectorButtons/SelectSalButton.pressed.connect(func() -> void: _select_station_type("sal"))
+	$VBox/SelectorButtons/SelectUnguentoButton.pressed.connect(func() -> void: _select_station_type("unguento"))
+	$VBox/SelectorButtons/SelectStorageButton.pressed.connect(func() -> void: _select_station_type("storage"))
+	$VBox/SelectorButtons/SelectEmptyButton.pressed.connect(func() -> void: _select_station_type("empty"))
+
+	$VBox/WorkerButtons/HireFactoryWorkerButton.pressed.connect(_buy_worker)
+	$VBox/WorkerButtons/AssignWorkerButton.pressed.connect(_assign_worker_to_selected)
+	$VBox/WorkerButtons/UnassignWorkerButton.pressed.connect(_unassign_worker_from_selected)
+
 	$VBox/TransferButtons/TransferSlimeButton.pressed.connect(func() -> void: _transfer_item("slime"))
 	$VBox/TransferButtons/TransferPulpButton.pressed.connect(func() -> void: _transfer_item("pulp"))
 	$VBox/TransferButtons/TransferSmoothieButton.pressed.connect(func() -> void: _transfer_item("smoothie"))
 	$VBox/TransferButtons/TransferSalButton.pressed.connect(func() -> void: _transfer_item("sal"))
 	$VBox/TransferButtons/TransferUnguentoButton.pressed.connect(func() -> void: _transfer_item("unguento"))
+
 	GameState.state_changed.connect(_refresh)
 	_rebuild_grid()
 	_refresh()
 
-func _select_building(building_name: String) -> void:
-	GameState.selected_building = building_name
-	status_label.text = "Seleccionado: " + building_name
+func _select_station_type(station_type: String) -> void:
+	selected_station_type = station_type
+	status_label.text = "Tipo seleccionado: " + station_type
 
-func _expand_grid() -> void:
-	GameState.expand_factory_grid()
-	_rebuild_grid()
-	status_label.text = "Grid ampliado"
+func _buy_worker() -> void:
+	_show_result(GameState.try_hire_factory_worker())
 
-func _manual_slime() -> void:
-	_show_result(GameState.try_add_slime_manual())
+func _assign_worker_to_selected() -> void:
+	if selected_cell_id == "":
+		status_label.text = "Bloqueado"
+		return
+	_show_result(GameState.assign_worker_to_cell(selected_cell_id))
 
-func _manual_pulp() -> void:
-	_show_result(GameState.try_convert_slime_to_pulp_manual())
-
-func _manual_smoothie() -> void:
-	_show_result(GameState.try_convert_pulp_to_smoothie_manual())
-
-func _send_bundle() -> void:
-	_show_result(GameState.try_send_bundle_to_shop())
-
-func _collect_station(station: String) -> void:
-	_show_result(GameState.collect_station(station))
+func _unassign_worker_from_selected() -> void:
+	if selected_cell_id == "":
+		status_label.text = "Bloqueado"
+		return
+	_show_result(GameState.unassign_worker_from_cell(selected_cell_id))
 
 func _transfer_item(item: String) -> void:
 	_show_result(GameState.try_transfer_to_shop(item))
@@ -70,16 +68,14 @@ func _rebuild_grid() -> void:
 		for x in range(GameState.factory_grid_size):
 			var id := "%d_%d" % [x, y]
 			var b := Button.new()
-			b.custom_minimum_size = Vector2(80, 80)
-			b.text = GameState.factory_layout.get(id, "Vacío")
-			b.pressed.connect(func() -> void: _place_on_cell(id))
+			b.custom_minimum_size = Vector2(92, 92)
+			b.text = GameState.get_factory_cell_label(id)
+			b.pressed.connect(func() -> void: _on_grid_cell_pressed(id))
 			grid.add_child(b)
 
-func _place_on_cell(cell_id: String) -> void:
-	if GameState.selected_building == "":
-		status_label.text = "Bloqueado"
-		return
-	var result := GameState.place_building(cell_id, GameState.selected_building)
+func _on_grid_cell_pressed(cell_id: String) -> void:
+	selected_cell_id = cell_id
+	var result := GameState.set_factory_cell_type(cell_id, selected_station_type)
 	_show_result(result)
 	_rebuild_grid()
 
@@ -97,11 +93,9 @@ func _refresh() -> void:
 		GameState.shop_stock["sal"], GameState.shop_cap["sal"],
 		GameState.shop_stock["unguento"], GameState.shop_cap["unguento"]
 	]
-	station_status_label.text = "LISTO -> Sl:%d Pu:%d Sm:%d Ag:%d Sa:%d Un:%d" % [
-		GameState.station_ready["slime"],
-		GameState.station_ready["pulp"],
-		GameState.station_ready["smoothie"],
-		GameState.station_ready["agua"],
-		GameState.station_ready["sal"],
-		GameState.station_ready["unguento"]
+	pool_label.text = "Pool workers fábrica: total %d | libres %d | coste siguiente %d" % [
+		GameState.factory_worker_pool_total,
+		GameState.factory_worker_pool_unassigned,
+		GameState.get_factory_worker_hire_cost()
 	]
+	_rebuild_grid()
