@@ -29,8 +29,12 @@ const CUSTOMER_DIALOGUES := [
 @onready var upgrade_max_customers_button: Button = $VBox/UpgradeButtons/UpgradeMaxCustomersButton
 @onready var client_slots: VBoxContainer = $VBox/ClientSlots
 @onready var world: Node2D = $World
+@onready var spawn_point: Marker2D = $World/Spawn
+@onready var queue1_point: Marker2D = $World/Queue1
+@onready var queue2_point: Marker2D = $World/Queue2
 @onready var counter_point: Marker2D = $World/Counter
 @onready var cashier_spot_point: Marker2D = $World/CashierSpot
+@onready var exit_point: Marker2D = $World/Exit
 @onready var stock_room_point: Marker2D = $World/StockRoom
 @onready var shelf_slime_point: Marker2D = $World/ShelfSlime
 @onready var shelf_pulp_point: Marker2D = $World/ShelfPulp
@@ -60,6 +64,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	serve_cooldown = maxf(0.0, serve_cooldown - delta)
 	_update_customer_patience(delta)
+	_update_customer_motion(delta)
 	_update_restockers(delta)
 	if GameState.cashier_hired and serve_cooldown <= 0.0:
 		_try_serve_first_customer()
@@ -99,12 +104,16 @@ func _generate_customer() -> Dictionary:
 	var pick: Dictionary = pool[randi_range(0, pool.size() - 1)]
 	var amount:int = randi_range(pick["min"], pick["max"])
 	var avatar_id:int = randi_range(0, CUSTOMER_NAMES.size() - 1)
+	var node := _create_actor_visual(Color(0.35, 0.85, 1.0), "C")
+	node.position = spawn_point.position
 	return {
 		"name": CUSTOMER_NAMES[avatar_id],
 		"dialog": CUSTOMER_DIALOGUES[randi_range(0, CUSTOMER_DIALOGUES.size() - 1)],
 		"avatar": avatar_id,
 		"order": {"item": pick["item"], "amount": amount},
-		"patience": GameState.max_customer_wait
+		"patience": GameState.max_customer_wait,
+		"node": node,
+		"state": "to_queue1"
 	}
 
 func _update_customer_patience(delta: float) -> void:
@@ -114,10 +123,38 @@ func _update_customer_patience(delta: float) -> void:
 		if customer["patience"] <= 0.0:
 			to_remove.append(customer)
 	for customer in to_remove:
-		customers.erase(customer)
+		_remove_customer(customer)
 		GameState.record_customer_outcome(false)
 		feedback_label.text = "Cliente perdido por paciencia"
 	_fill_queue_to_max()
+
+func _update_customer_motion(delta: float) -> void:
+	for i in range(customers.size()):
+		var customer: Dictionary = customers[i]
+		var node: Node2D = customer["node"]
+		if not is_instance_valid(node):
+			continue
+		var target := _get_customer_target(customer, i)
+		node.position = node.position.move_toward(target, CUSTOMER_SPEED * delta)
+		if node.position.distance_to(target) < 2.0:
+			if customer["state"] == "to_queue1":
+				customer["state"] = "to_queue2"
+			elif customer["state"] == "to_queue2":
+				customer["state"] = "to_counter"
+			elif customer["state"] == "to_counter":
+				customer["state"] = "waiting_checkout"
+
+func _get_customer_target(customer: Dictionary, index: int) -> Vector2:
+	var state: String = customer["state"]
+	if state == "to_queue1":
+		return queue1_point.position + Vector2(float(index) * 24.0, 0.0)
+	if state == "to_queue2":
+		return queue2_point.position + Vector2(float(index) * 24.0, 0.0)
+	if state == "to_counter" or state == "waiting_checkout":
+		return counter_point.position
+	if state == "to_exit":
+		return exit_point.position
+	return queue1_point.position
 
 func _on_serve_button_pressed() -> void:
 	if GameState.cashier_hired:
@@ -135,16 +172,31 @@ func _try_serve_first_customer() -> void:
 	if serve_cooldown > 0.0:
 		feedback_label.text = "Bloqueado"
 		return
-	var customer: Dictionary = customers[0]
-	var success := GameState.try_fulfill_order(customer["order"])
+	var candidate := _get_front_waiting_customer()
+	if candidate.is_empty():
+		feedback_label.text = "Falta input"
+		return
+	var success := GameState.try_fulfill_order(candidate["order"])
 	if not success:
 		feedback_label.text = "Falta input"
 		return
 	serve_cooldown = 1.0
 	GameState.record_customer_outcome(true)
 	feedback_label.text = "Venta atendida"
-	customers.pop_front()
+	_remove_customer(candidate)
 	_fill_queue_to_max()
+
+func _get_front_waiting_customer() -> Dictionary:
+	for customer in customers:
+		if customer["state"] == "waiting_checkout":
+			return customer
+	return {}
+
+func _remove_customer(customer: Dictionary) -> void:
+	var node: Node2D = customer.get("node")
+	if is_instance_valid(node):
+		node.queue_free()
+	customers.erase(customer)
 
 func _on_tick() -> void:
 	_refresh_worker_visuals()
@@ -269,11 +321,11 @@ func _item_color(item: String) -> Color:
 	return Color(0.8, 0.2, 0.9)
 
 func _refresh_order_label() -> void:
-	if customers.is_empty():
+	var front := _get_front_waiting_customer()
+	if front.is_empty():
 		order_label.text = "Pedido actual: ninguno"
 		return
-	var c: Dictionary = customers[0]
-	order_label.text = "Pedido actual: %s x%d" % [c["order"]["item"], c["order"]["amount"]]
+	order_label.text = "Pedido actual: %s x%d" % [front["order"]["item"], front["order"]["amount"]]
 
 func _refresh_client_slots() -> void:
 	for child in client_slots.get_children():
