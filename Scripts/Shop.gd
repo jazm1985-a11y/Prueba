@@ -46,6 +46,7 @@ var cashier_agents: Array = []
 var restock_tasks := {"slime": 0, "pulp": 0, "smoothie": 0, "sal": 0, "unguento": 0}
 var last_shop_stock := {"slime": 0, "pulp": 0, "smoothie": 0, "sal": 0, "unguento": 0}
 var serve_cooldown: float = 0.0
+var spawn_cooldown: float = 0.0
 
 func _ready() -> void:
 	GameState.state_changed.connect(_refresh_ui)
@@ -58,11 +59,13 @@ func _ready() -> void:
 	upgrade_max_customers_button.pressed.connect(_on_upgrade_max_customers_button_pressed)
 	last_shop_stock = GameState.shop_stock.duplicate()
 	_refresh_worker_visuals()
-	_fill_queue_to_max()
+	_spawn_customer_if_possible()
+	_reset_spawn_cooldown()
 	_refresh_ui()
 
 func _process(delta: float) -> void:
 	serve_cooldown = maxf(0.0, serve_cooldown - delta)
+	_handle_customer_spawns(delta)
 	_update_customer_patience(delta)
 	_update_customer_motion(delta)
 	_update_restockers(delta)
@@ -70,6 +73,30 @@ func _process(delta: float) -> void:
 		_try_serve_first_customer()
 	_refresh_order_label()
 	_refresh_ui()
+
+func _get_effective_customer_capacity() -> int:
+	var bonus_from_stars: int = GameState.get_shop_stars() - 1
+	return min(8, GameState.max_visible_customers + bonus_from_stars)
+
+func _get_spawn_interval() -> float:
+	var star_norm: float = float(GameState.get_shop_stars() - 1) / 4.0
+	return lerpf(7.0, 1.8, star_norm)
+
+func _reset_spawn_cooldown() -> void:
+	var base_interval: float = _get_spawn_interval()
+	spawn_cooldown = randf_range(base_interval * 0.75, base_interval * 1.25)
+
+func _handle_customer_spawns(delta: float) -> void:
+	spawn_cooldown -= delta
+	if spawn_cooldown > 0.0:
+		return
+	_spawn_customer_if_possible()
+	_reset_spawn_cooldown()
+
+func _spawn_customer_if_possible() -> void:
+	if customers.size() >= _get_effective_customer_capacity():
+		return
+	customers.append(_generate_customer())
 
 func _on_hire_restocker_button_pressed() -> void:
 	var result := GameState.hire_worker("restocker")
@@ -91,13 +118,8 @@ func _on_upgrade_max_customers_button_pressed() -> void:
 	var result: String = GameState.try_upgrade_max_visible_customers()
 	if result == "OK":
 		feedback_label.text = "Más clientes visibles"
-		_fill_queue_to_max()
 	else:
 		feedback_label.text = result
-
-func _fill_queue_to_max() -> void:
-	while customers.size() < GameState.max_visible_customers:
-		customers.append(_generate_customer())
 
 func _generate_customer() -> Dictionary:
 	var pool := GameState.get_customer_pool()
@@ -126,7 +148,6 @@ func _update_customer_patience(delta: float) -> void:
 		_remove_customer(customer)
 		GameState.record_customer_outcome(false)
 		feedback_label.text = "Cliente perdido por paciencia"
-	_fill_queue_to_max()
 
 func _update_customer_motion(delta: float) -> void:
 	for i in range(customers.size()):
@@ -184,7 +205,6 @@ func _try_serve_first_customer() -> void:
 	GameState.record_customer_outcome(true)
 	feedback_label.text = "Venta atendida"
 	_remove_customer(candidate)
-	_fill_queue_to_max()
 
 func _get_front_waiting_customer() -> Dictionary:
 	for customer in customers:
@@ -330,7 +350,8 @@ func _refresh_order_label() -> void:
 func _refresh_client_slots() -> void:
 	for child in client_slots.get_children():
 		child.queue_free()
-	for i in range(GameState.max_visible_customers):
+	var capacity := _get_effective_customer_capacity()
+	for i in range(capacity):
 		var row := HBoxContainer.new()
 		if i < customers.size():
 			var c: Dictionary = customers[i]
@@ -350,20 +371,22 @@ func _refresh_client_slots() -> void:
 		client_slots.add_child(row)
 
 func _refresh_ui() -> void:
+	var capacity := _get_effective_customer_capacity()
 	gold_label.text = "Gold: %d" % GameState.gold
 	stars_label.text = "Reputación: %d | Estrellas: %d★ | Cola: %d/%d" % [
 		GameState.reputation,
 		GameState.get_shop_stars(),
 		customers.size(),
-		GameState.max_visible_customers
+		capacity
 	]
-	stock_label.text = "Shop S:%d/%d P:%d/%d Sm:%d/%d Sa:%d/%d Un:%d/%d | CD atender: %.1fs" % [
+	stock_label.text = "Shop S:%d/%d P:%d/%d Sm:%d/%d Sa:%d/%d Un:%d/%d | CD atender: %.1fs | Spawn %.1fs" % [
 		GameState.shop_stock["slime"], GameState.shop_cap["slime"],
 		GameState.shop_stock["pulp"], GameState.shop_cap["pulp"],
 		GameState.shop_stock["smoothie"], GameState.shop_cap["smoothie"],
 		GameState.shop_stock["sal"], GameState.shop_cap["sal"],
 		GameState.shop_stock["unguento"], GameState.shop_cap["unguento"],
-		serve_cooldown
+		serve_cooldown,
+		maxf(spawn_cooldown, 0.0)
 	]
 	serve_button.disabled = GameState.cashier_hired or customers.is_empty() or serve_cooldown > 0.0
 	upgrade_checkout_button.text = "Añadir caja (%d gold)" % GameState.get_checkout_upgrade_cost()
