@@ -2,6 +2,8 @@ extends Control
 
 const CUSTOMER_SPEED:float = 120.0
 const WORKER_SPEED:float = 95.0
+const PICK_ITEM_TIME:float = 0.9
+const CHECKOUT_TIME:float = 1.4
 const CUSTOMER_NAMES := ["Lima", "Nora", "Bruno", "Paz", "Sol", "Iris", "Teo", "Mina", "Leo", "Vera"]
 const CUSTOMER_DIALOGUES := [
 	"Tengo prisa.",
@@ -135,7 +137,10 @@ func _generate_customer() -> Dictionary:
 		"order": {"item": pick["item"], "amount": amount},
 		"patience": GameState.max_customer_wait,
 		"node": node,
-		"state": "to_queue1"
+		"state": "to_shelf",
+		"pick_timer": PICK_ITEM_TIME + randf_range(0.0, 0.9),
+		"checkout_timer": CHECKOUT_TIME + randf_range(0.0, 0.9),
+		"shelf_target": _get_customer_shelf_position(pick["item"]) + Vector2(randf_range(-10.0, 10.0), randf_range(-8.0, 8.0))
 	}
 
 func _update_customer_patience(delta: float) -> void:
@@ -155,10 +160,17 @@ func _update_customer_motion(delta: float) -> void:
 		var node: Node2D = customer["node"]
 		if not is_instance_valid(node):
 			continue
+		if customer["state"] == "picking":
+			customer["pick_timer"] = maxf(0.0, float(customer.get("pick_timer", PICK_ITEM_TIME)) - delta)
+			if customer["pick_timer"] <= 0.0:
+				customer["state"] = "to_queue1"
+			continue
 		var target := _get_customer_target(customer, i)
 		node.position = node.position.move_toward(target, CUSTOMER_SPEED * delta)
 		if node.position.distance_to(target) < 2.0:
-			if customer["state"] == "to_queue1":
+			if customer["state"] == "to_shelf":
+				customer["state"] = "picking"
+			elif customer["state"] == "to_queue1":
 				customer["state"] = "to_queue2"
 			elif customer["state"] == "to_queue2":
 				customer["state"] = "to_counter"
@@ -167,10 +179,12 @@ func _update_customer_motion(delta: float) -> void:
 
 func _get_customer_target(customer: Dictionary, index: int) -> Vector2:
 	var state: String = customer["state"]
+	if state == "to_shelf":
+		return customer.get("shelf_target", shelf_slime_point.position)
 	if state == "to_queue1":
-		return queue1_point.position + Vector2(float(index) * 24.0, 0.0)
+		return queue1_point.position + Vector2(float(index % max(1, GameState.checkouts)) * 24.0, float(index / max(1, GameState.checkouts)) * 16.0)
 	if state == "to_queue2":
-		return queue2_point.position + Vector2(float(index) * 24.0, 0.0)
+		return queue2_point.position + Vector2(float(index % max(1, GameState.checkouts)) * 24.0, float(index / max(1, GameState.checkouts)) * 16.0)
 	if state == "to_counter" or state == "waiting_checkout":
 		return counter_point.position
 	if state == "to_exit":
@@ -197,9 +211,18 @@ func _try_serve_first_customer() -> void:
 	if candidate.is_empty():
 		feedback_label.text = "Falta input"
 		return
+	if candidate.get("state", "") == "waiting_checkout":
+		candidate["state"] = "checking_out"
+	if candidate["state"] == "checking_out":
+		candidate["checkout_timer"] = maxf(0.0, float(candidate.get("checkout_timer", CHECKOUT_TIME)) - 0.5)
+		if candidate["checkout_timer"] > 0.0:
+			feedback_label.text = "Cobro en progreso..."
+			serve_cooldown = 0.5
+			return
 	var success := GameState.try_fulfill_order(candidate["order"])
 	if not success:
 		feedback_label.text = "Falta input"
+		candidate["state"] = "waiting_checkout"
 		return
 	serve_cooldown = 1.0
 	GameState.record_customer_outcome(true)
@@ -207,6 +230,9 @@ func _try_serve_first_customer() -> void:
 	_remove_customer(candidate)
 
 func _get_front_waiting_customer() -> Dictionary:
+	for customer in customers:
+		if customer["state"] == "checking_out":
+			return customer
 	for customer in customers:
 		if customer["state"] == "waiting_checkout":
 			return customer
@@ -340,12 +366,20 @@ func _item_color(item: String) -> Color:
 		return Color(0.9, 0.5, 0.1)
 	return Color(0.8, 0.2, 0.9)
 
+func _get_customer_shelf_position(item: String) -> Vector2:
+	if item == "slime":
+		return shelf_slime_point.position
+	if item == "pulp" or item == "sal":
+		return shelf_pulp_point.position
+	return shelf_smoothie_point.position
+
 func _refresh_order_label() -> void:
 	var front := _get_front_waiting_customer()
 	if front.is_empty():
 		order_label.text = "Pedido actual: ninguno"
 		return
-	order_label.text = "Pedido actual: %s x%d" % [front["order"]["item"], front["order"]["amount"]]
+	var state_suffix := " (cobro)" if String(front.get("state", "")) == "checking_out" else ""
+	order_label.text = "Pedido actual: %s x%d%s" % [front["order"]["item"], front["order"]["amount"], state_suffix]
 
 func _refresh_client_slots() -> void:
 	for child in client_slots.get_children():
@@ -356,7 +390,7 @@ func _refresh_client_slots() -> void:
 		if i < customers.size():
 			var c: Dictionary = customers[i]
 			var info := Label.new()
-			info.text = "%d) %s | %s | %s x%d" % [i + 1, c["name"], c["dialog"], c["order"]["item"], c["order"]["amount"]]
+			info.text = "%d) %s | %s | %s x%d | %s" % [i + 1, c["name"], c["dialog"], c["order"]["item"], c["order"]["amount"], c.get("state", "")]
 			row.add_child(info)
 			var bar := ProgressBar.new()
 			bar.min_value = 0

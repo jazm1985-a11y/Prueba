@@ -106,11 +106,15 @@ func _get_grid_cell_text(cell_id: String) -> String:
 	var progress: float = float(GameState.factory_cell_progress.get(cell_id, 0.0))
 	if progress > 0.0 and progress < 1.0:
 		label += "\n%3d%%" % int(progress * 100.0)
+	var runtime: Dictionary = GameState.get_factory_cell_runtime(cell_id)
+	if int(runtime.get("crafters", 0)) > 0:
+		label += "\nT:%.1fs" % float(runtime.get("cycle_time", 0.0))
 	return label
+
 
 func _on_grid_cell_pressed(cell_id: String) -> void:
 	selected_cell_id = cell_id
-	selected_cell_label.text = "Celda seleccionada: " + cell_id + " | Tipo a construir: " + selected_station_type
+	_update_selected_cell_details()
 	_rebuild_grid()
 
 func _build_world_grid() -> void:
@@ -165,7 +169,7 @@ func _sync_worker_agents() -> void:
 	for cell_id in GameState.factory_cell_workers.keys():
 		var count:int = int(GameState.factory_cell_workers[cell_id])
 		for i in range(count):
-			var node := _create_worker_node()
+			var node := _create_worker_node(i > 0)
 			node.position = _cell_center(cell_id) + Vector2(float(i % 2) * 8.0, float(i / 2) * 8.0)
 			world_workers.add_child(node)
 			worker_agents.append({
@@ -173,15 +177,16 @@ func _sync_worker_agents() -> void:
 				"home": cell_id,
 				"state": "idle",
 				"target": cell_id,
-				"item": ""
+				"item": "",
+				"role": "transport" if i > 0 else "crafter"
 			})
 
-func _create_worker_node() -> Node2D:
+func _create_worker_node(is_transporter: bool) -> Node2D:
 	var node := Node2D.new()
 	var body := ColorRect.new()
 	body.size = Vector2(12, 12)
 	body.position = Vector2(-6, -6)
-	body.color = Color(1.0, 0.95, 0.4)
+	body.color = Color(0.9, 0.75, 0.25) if is_transporter else Color(0.95, 1.0, 0.4)
 	node.add_child(body)
 	var carry := ColorRect.new()
 	carry.name = "Carry"
@@ -200,6 +205,10 @@ func _update_worker_visuals(delta: float) -> void:
 func _update_single_worker(agent: Dictionary, delta: float) -> void:
 	var node: Node2D = agent["node"]
 	var carry: ColorRect = node.get_node("Carry") as ColorRect
+	if agent.get("role", "") == "crafter":
+		node.position = node.position.move_toward(_cell_center(agent["home"]), WORKER_SPEED * delta)
+		carry.visible = false
+		return
 	if agent["state"] == "idle":
 		var task := _pick_task_for_cell(agent["home"])
 		if not task.is_empty():
@@ -299,10 +308,32 @@ func _cell_center(cell_id: String) -> Vector2:
 
 func _update_flow_label() -> void:
 	var moving:int = 0
+	var crafters:int = 0
+	var transporters:int = 0
 	for agent in worker_agents:
+		if agent.get("role", "") == "crafter":
+			crafters += 1
+		else:
+			transporters += 1
 		if agent["state"] != "idle":
 			moving += 1
-	flow_label.text = "Flujo: workers moviéndose %d/%d" % [moving, worker_agents.size()]
+	flow_label.text = "Flujo: mov %d/%d | crafters:%d transport:%d" % [moving, worker_agents.size(), crafters, transporters]
+
+func _update_selected_cell_details() -> void:
+	if selected_cell_id == "":
+		selected_cell_label.text = "Celda seleccionada: ninguna"
+		return
+	var runtime: Dictionary = GameState.get_factory_cell_runtime(selected_cell_id)
+	var crafters:int = int(runtime.get("crafters", 0))
+	var transporters:int = int(runtime.get("transporters", 0))
+	var cycle_time: float = float(runtime.get("cycle_time", 0.0))
+	selected_cell_label.text = "Celda %s | build:%s | crafters:%d transport:%d | ciclo:%.1fs" % [
+		selected_cell_id,
+		selected_station_type,
+		crafters,
+		transporters,
+		cycle_time
+	]
 
 func _refresh() -> void:
 	stock_label.text = "Factory S:%d/%d P:%d/%d Sm:%d/%d A:%d/%d Sa:%d/%d U:%d/%d\nShop S:%d/%d P:%d/%d Sm:%d/%d Sa:%d/%d U:%d/%d" % [
@@ -323,10 +354,7 @@ func _refresh() -> void:
 		GameState.factory_worker_pool_unassigned,
 		GameState.get_factory_worker_hire_cost()
 	]
-	if selected_cell_id != "":
-		selected_cell_label.text = "Celda seleccionada: %s | Tipo a construir: %s" % [selected_cell_id, selected_station_type]
-	else:
-		selected_cell_label.text = "Celda seleccionada: ninguna"
+	_update_selected_cell_details()
 	if cell_markers.size() != GameState.factory_grid_size * GameState.factory_grid_size:
 		_build_world_grid()
 	_sync_world_grid_colors()

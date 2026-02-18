@@ -129,6 +129,23 @@ func get_factory_cell_label(cell_id: String) -> String:
 		return "Storage"
 	return "%s\nW:%d" % [t.capitalize(), w]
 
+func get_factory_cell_runtime(cell_id: String) -> Dictionary:
+	var station_type: String = String(factory_cell_types.get(cell_id, ""))
+	var workers:int = int(factory_cell_workers.get(cell_id, 0))
+	if station_type == "" or station_type == "storage":
+		return {"station": station_type, "crafters": 0, "transporters": 0, "efficiency": 0.0, "cycle_time": 0.0}
+	var crafters:int = 1 if workers > 0 else 0
+	var transporters:int = max(workers - crafters, 0)
+	var efficiency := _get_factory_efficiency_for_cell(cell_id, station_type, transporters)
+	var cycle_time: float = station_time[station_type] / max(efficiency, 0.0001)
+	return {
+		"station": station_type,
+		"crafters": crafters,
+		"transporters": transporters,
+		"efficiency": efficiency,
+		"cycle_time": cycle_time
+	}
+
 func _update_factory_cells(delta: float) -> void:
 	var changed: bool = false
 	for cell_id in factory_cell_types.keys():
@@ -138,10 +155,12 @@ func _update_factory_cells(delta: float) -> void:
 		var workers:int = int(factory_cell_workers.get(cell_id, 0))
 		if workers <= 0:
 			continue
-		var efficiency := _get_factory_efficiency_for_cell(cell_id, station_type)
+		var crafters:int = 1
+		var transporters:int = max(workers - crafters, 0)
+		var efficiency := _get_factory_efficiency_for_cell(cell_id, station_type, transporters)
 		if efficiency <= 0.0:
 			continue
-		var progress_gain: float = (delta * float(workers) * efficiency) / station_time[station_type]
+		var progress_gain: float = (delta * float(crafters) * efficiency) / station_time[station_type]
 		factory_cell_progress[cell_id] = float(factory_cell_progress.get(cell_id, 0.0)) + progress_gain
 		while factory_cell_progress[cell_id] >= 1.0:
 			var produced: bool = _try_produce_from_cell(station_type)
@@ -153,10 +172,12 @@ func _update_factory_cells(delta: float) -> void:
 	if changed:
 		emit_signal("state_changed")
 
-func _get_factory_efficiency_for_cell(cell_id: String, station_type: String) -> float:
+func _get_factory_efficiency_for_cell(cell_id: String, station_type: String, transporters: int = 0) -> float:
 	var target_type:String = _get_station_primary_target(station_type)
 	var dist:int = _get_distance_to_closest_station(cell_id, target_type)
-	return 1.0 / max(1.0, 1.0 + float(dist) * 0.25)
+	var distance_penalty: float = max(0.35, 1.0 - float(dist) * 0.16)
+	var transport_bonus: float = 1.0 + min(float(transporters), 3.0) * 0.22
+	return clampf(distance_penalty * transport_bonus, 0.2, 1.6)
 
 func _get_station_primary_target(station_type: String) -> String:
 	if station_type == "slime":
@@ -489,6 +510,19 @@ func place_building(cell_id: String, building_name: String) -> String:
 		return "Capacidad llena"
 	factory_layout[cell_id] = building_name
 	emit_signal("state_changed")
+	return "OK"
+
+func get_factory_grid_upgrade_cost() -> int:
+	return 80 + max(factory_grid_size - 3, 0) * 60
+
+func try_upgrade_factory_grid() -> String:
+	var cost:int = get_factory_grid_upgrade_cost()
+	if gold < cost:
+		return "Falta gold"
+	if factory_grid_size >= 6:
+		return "Capacidad llena"
+	gold -= cost
+	expand_factory_grid()
 	return "OK"
 
 func expand_factory_grid() -> void:
