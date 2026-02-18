@@ -124,35 +124,97 @@ func _build_world_grid() -> void:
 	for y in range(GameState.factory_grid_size):
 		for x in range(GameState.factory_grid_size):
 			var id := "%d_%d" % [x, y]
+			var tile_root := Node2D.new()
+			tile_root.position = Vector2(x * CELL_SIZE, y * CELL_SIZE)
+			world_grid.add_child(tile_root)
+
 			var tile := ColorRect.new()
-			tile.size = Vector2(CELL_SIZE - 6.0, CELL_SIZE - 6.0)
-			tile.position = Vector2(x * CELL_SIZE, y * CELL_SIZE)
-			tile.color = Color(0.2, 0.2, 0.24)
-			world_grid.add_child(tile)
-			cell_markers[id] = tile
+			tile.size = Vector2(CELL_SIZE - 8.0, CELL_SIZE - 8.0)
+			tile.position = Vector2(2.0, 2.0)
+			tile.color = Color(0.17, 0.19, 0.24)
+			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile_root.add_child(tile)
+
+			var frame := ColorRect.new()
+			frame.size = Vector2(CELL_SIZE - 8.0, 3.0)
+			frame.position = Vector2(2.0, CELL_SIZE - 9.0)
+			frame.color = Color(0.08, 0.08, 0.1)
+			frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile_root.add_child(frame)
+
+			var icon := Label.new()
+			icon.position = Vector2(8.0, 8.0)
+			icon.size = Vector2(CELL_SIZE - 16.0, 22.0)
+			icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			icon.text = "·"
+			tile_root.add_child(icon)
+
+			var progress_bg := ColorRect.new()
+			progress_bg.position = Vector2(8.0, CELL_SIZE - 18.0)
+			progress_bg.size = Vector2(CELL_SIZE - 22.0, 7.0)
+			progress_bg.color = Color(0.05, 0.05, 0.05, 0.85)
+			progress_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile_root.add_child(progress_bg)
+
+			var progress_fill := ColorRect.new()
+			progress_fill.position = progress_bg.position
+			progress_fill.size = Vector2(0.0, 7.0)
+			progress_fill.color = Color(0.95, 0.92, 0.28, 0.95)
+			progress_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile_root.add_child(progress_fill)
+
+			cell_markers[id] = {
+				"tile": tile,
+				"icon": icon,
+				"progress_fill": progress_fill
+			}
 
 func _sync_world_grid_colors() -> void:
 	for id in cell_markers.keys():
-		var tile: ColorRect = cell_markers[id]
+		var marker: Dictionary = cell_markers[id]
+		var tile: ColorRect = marker["tile"]
+		var icon: Label = marker["icon"]
+		var progress_fill: ColorRect = marker["progress_fill"]
 		var station_type: String = String(GameState.factory_cell_types.get(id, ""))
 		tile.color = _station_color(station_type)
+		icon.text = _station_icon(station_type)
+		var progress: float = clampf(float(GameState.factory_cell_progress.get(id, 0.0)), 0.0, 1.0)
+		progress_fill.size.x = (CELL_SIZE - 22.0) * progress
+
+func _station_icon(station_type: String) -> String:
+	if station_type == "slime":
+		return "SLM"
+	if station_type == "pulp":
+		return "PLP"
+	if station_type == "smoothie":
+		return "SMT"
+	if station_type == "agua":
+		return "AGU"
+	if station_type == "sal":
+		return "SAL"
+	if station_type == "unguento":
+		return "UNG"
+	if station_type == "storage":
+		return "DEP"
+	return "·"
 
 func _station_color(station_type: String) -> Color:
 	if station_type == "slime":
-		return Color(0.2, 0.75, 0.3)
+		return Color(0.17, 0.52, 0.24)
 	if station_type == "pulp":
-		return Color(1.0, 0.7, 0.2)
+		return Color(0.73, 0.44, 0.12)
 	if station_type == "smoothie":
-		return Color(0.8, 0.2, 0.8)
+		return Color(0.52, 0.18, 0.56)
 	if station_type == "agua":
-		return Color(0.2, 0.6, 1.0)
+		return Color(0.12, 0.36, 0.7)
 	if station_type == "sal":
-		return Color(0.9, 0.9, 0.9)
+		return Color(0.63, 0.63, 0.63)
 	if station_type == "unguento":
-		return Color(0.85, 0.45, 0.15)
+		return Color(0.62, 0.3, 0.12)
 	if station_type == "storage":
-		return Color(0.35, 0.35, 0.45)
-	return Color(0.2, 0.2, 0.24)
+		return Color(0.25, 0.25, 0.34)
+	return Color(0.14, 0.15, 0.18)
 
 func _sync_worker_agents() -> void:
 	var parts: Array[String] = []

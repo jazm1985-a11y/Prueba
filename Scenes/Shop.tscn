@@ -80,6 +80,30 @@ position = Vector2(0, 40)
 size = Vector2(1160, 220)
 color = Color(0.16, 0.16, 0.18, 1)
 
+
+[node name="WallBack" type="ColorRect" parent="World"]
+position = Vector2(0, 0)
+size = Vector2(1160, 42)
+color = Color(0.23, 0.24, 0.28, 1)
+
+[node name="Rug" type="ColorRect" parent="World"]
+position = Vector2(570, 162)
+size = Vector2(390, 64)
+color = Color(0.4, 0.1, 0.1, 0.45)
+
+[node name="ShelfSign" type="Label" parent="World"]
+offset_left = 250.0
+offset_top = 14.0
+offset_right = 560.0
+offset_bottom = 34.0
+text = "Estanterías"
+
+[node name="CheckoutSign" type="Label" parent="World"]
+offset_left = 760.0
+offset_top = 44.0
+offset_right = 920.0
+offset_bottom = 64.0
+text = "Caja"
 [node name="ShelfSlimeVisual" type="ColorRect" parent="World"]
 position = Vector2(250, 40)
 size = Vector2(70, 90)
