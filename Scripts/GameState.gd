@@ -57,12 +57,12 @@ func _notification(what: int) -> void:
 		save_game()
 
 func run_tick() -> void:
-	_run_farmers()
-	_run_juicers()
-	_run_mixers()
-	_run_restockers()
+	var changed: bool = false
+	if _run_restockers():
+		changed = true
 	emit_signal("tick_processed")
-	emit_signal("state_changed")
+	if changed:
+		emit_signal("state_changed")
 
 # --- FACTORY GRID 2.0 ---
 
@@ -279,11 +279,12 @@ func _run_mixers() -> void:
 	factory_stock["pulp"] -= conversions * 2
 	factory_stock["smoothie"] += conversions
 
-func _run_restockers() -> void:
+func _run_restockers() -> bool:
 	if shop_workers["restocker"] <= 0:
-		return
+		return false
 	var moves_left:int = shop_workers["restocker"]
 	var moved := true
+	var changed: bool = false
 	while moved and moves_left > 0:
 		moved = false
 		for item in ["unguento", "smoothie", "sal", "pulp", "slime"]:
@@ -292,30 +293,29 @@ func _run_restockers() -> void:
 				shop_stock[item] += 1
 				moves_left -= 1
 				moved = true
+				changed = true
 				break
+	return changed
 
 # --- HIRING / SHOP ---
 
 func can_hire_worker(worker_type: String) -> bool:
-	return gold >= 10 and (_has_worker_key(worker_type))
+	if worker_type in factory_workers:
+		return false
+	if worker_type == "restocker":
+		return gold >= get_restocker_hire_cost()
+	if worker_type == "cashier":
+		return gold >= get_cashier_hire_cost()
+	return false
 
 func hire_worker(worker_type: String) -> String:
-	if gold < 10:
-		return "Falta gold"
 	if worker_type in factory_workers:
-		factory_workers[worker_type] += 1
-	elif worker_type == "restocker":
+		return "Bloqueado"
+	if worker_type == "restocker":
 		return try_hire_restocker()
-	elif worker_type == "cashier":
+	if worker_type == "cashier":
 		return try_hire_cashier()
-	else:
-		return "Worker inválido"
-	gold -= 10
-	emit_signal("state_changed")
-	return "OK"
-
-func _has_worker_key(worker_type: String) -> bool:
-	return worker_type in factory_workers or worker_type in shop_workers
+	return "Worker inválido"
 
 func try_hire_restocker() -> String:
 	var cost:int = get_restocker_hire_cost()
