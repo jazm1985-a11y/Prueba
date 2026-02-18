@@ -1,0 +1,183 @@
+[gd_scene load_steps=2 format=3 uid="uid://dey1drlfpoaf0"]
+
+[ext_resource type="Script" path="res://Scripts/Factory.gd" id="1"]
+
+[node name="Factory" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StockLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Stock"
+
+[node name="PoolLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Pool"
+
+[node name="SelectedCellLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Celda seleccionada: ninguna"
+
+[node name="SelectorButtons" type="GridContainer" parent="VBox"]
+layout_mode = 2
+columns = 4
+
+[node name="SelectSlimeButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Slime"
+
+[node name="SelectPulpButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Pulpa"
+
+[node name="SelectSmoothieButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Smoothie"
+
+[node name="SelectAguaButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Agua"
+
+[node name="SelectSalButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Sal"
+
+[node name="SelectUnguentoButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Ungüento"
+
+[node name="SelectStorageButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Storage"
+
+[node name="SelectEmptyButton" type="Button" parent="VBox/SelectorButtons"]
+layout_mode = 2
+text = "Vaciar"
+
+[node name="ApplyBuildButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Construir tipo seleccionado en celda"
+
+[node name="MainSplit" type="HSplitContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GridPanel" type="VBoxContainer" parent="VBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GridTitle" type="Label" parent="VBox/MainSplit/GridPanel"]
+layout_mode = 2
+text = "Grid de diseño"
+
+[node name="Grid" type="GridContainer" parent="VBox/MainSplit/GridPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 3
+
+[node name="WorldPanel" type="VBoxContainer" parent="VBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WorldTitle" type="Label" parent="VBox/MainSplit/WorldPanel"]
+layout_mode = 2
+text = "Flujo visual de workers"
+
+[node name="FlowLabel" type="Label" parent="VBox/MainSplit/WorldPanel"]
+layout_mode = 2
+text = "Flujo:"
+
+[node name="World" type="Node2D" parent="VBox/MainSplit/WorldPanel"]
+position = Vector2(10, 80)
+
+[node name="Backdrop" type="ColorRect" parent="VBox/MainSplit/WorldPanel/World"]
+position = Vector2(-8, -8)
+size = Vector2(236, 236)
+color = Color(0.11, 0.12, 0.14, 1)
+
+[node name="AisleTop" type="ColorRect" parent="VBox/MainSplit/WorldPanel/World"]
+position = Vector2(0, -2)
+size = Vector2(220, 18)
+color = Color(0.2, 0.22, 0.24, 1)
+
+[node name="AisleBottom" type="ColorRect" parent="VBox/MainSplit/WorldPanel/World"]
+position = Vector2(0, 202)
+size = Vector2(220, 18)
+color = Color(0.2, 0.22, 0.24, 1)
+
+[node name="WallLeft" type="ColorRect" parent="VBox/MainSplit/WorldPanel/World"]
+position = Vector2(-8, -8)
+size = Vector2(8, 236)
+color = Color(0.07, 0.07, 0.09, 1)
+
+[node name="WallRight" type="ColorRect" parent="VBox/MainSplit/WorldPanel/World"]
+position = Vector2(220, -8)
+size = Vector2(8, 236)
+color = Color(0.07, 0.07, 0.09, 1)
+
+[node name="Sign" type="Label" parent="VBox/MainSplit/WorldPanel/World"]
+offset_left = 4.0
+offset_top = -28.0
+offset_right = 220.0
+offset_bottom = -8.0
+text = "Línea de producción"
+horizontal_alignment = 1
+
+[node name="WorldGrid" type="Node2D" parent="VBox/MainSplit/WorldPanel/World"]
+
+[node name="WorldWorkers" type="Node2D" parent="VBox/MainSplit/WorldPanel/World"]
+
+[node name="WorkerButtons" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="HireFactoryWorkerButton" type="Button" parent="VBox/WorkerButtons"]
+layout_mode = 2
+text = "Comprar worker"
+
+[node name="AssignWorkerButton" type="Button" parent="VBox/WorkerButtons"]
+layout_mode = 2
+text = "+ Worker celda"
+
+[node name="UnassignWorkerButton" type="Button" parent="VBox/WorkerButtons"]
+layout_mode = 2
+text = "- Worker celda"
+
+[node name="TransferButtons" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="TransferSlimeButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover slime"
+
+[node name="TransferPulpButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover pulp"
+
+[node name="TransferSmoothieButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover smoothie"
+
+[node name="TransferSalButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover sal"
+
+[node name="TransferUnguentoButton" type="Button" parent="VBox/TransferButtons"]
+layout_mode = 2
+text = "Mover ungüento"
+
+[node name="StatusLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Selecciona tipo y celda"
