@@ -36,6 +36,7 @@ var factory_cell_progress := {}
 var _tick_accumulator:float = 0.0
 var _save_accumulator:float = 0.0
 const SAVE_PATH := "user://save_game.json"
+const CURRENT_SAVE_VERSION:int = 2
 
 func _ready() -> void:
 	load_game()
@@ -517,6 +518,7 @@ func get_cashier_sales_per_tick() -> int:
 
 func save_game() -> void:
 	var data := {
+		"save_version": CURRENT_SAVE_VERSION,
 		"gold": gold,
 		"reputation": reputation,
 		"factory_stock": factory_stock,
@@ -544,30 +546,48 @@ func load_game() -> void:
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
-	gold = int(parsed.get("gold", gold))
-	reputation = int(parsed.get("reputation", reputation))
-	var f_stock: Dictionary = parsed.get("factory_stock", {})
+
+	var save_data: Dictionary = parsed
+	var save_version:int = int(save_data.get("save_version", 1))
+	if save_version < CURRENT_SAVE_VERSION:
+		save_data = _migrate_save_data(save_data, save_version)
+
+	gold = int(save_data.get("gold", gold))
+	reputation = int(save_data.get("reputation", reputation))
+	var f_stock: Dictionary = save_data.get("factory_stock", {})
 	for key in factory_stock.keys():
 		factory_stock[key] = int(f_stock.get(key, factory_stock[key]))
-	var s_stock: Dictionary = parsed.get("shop_stock", {})
+	var s_stock: Dictionary = save_data.get("shop_stock", {})
 	for key in shop_stock.keys():
 		shop_stock[key] = int(s_stock.get(key, shop_stock[key]))
-	max_visible_customers = int(parsed.get("max_visible_customers", max_visible_customers))
-	var loaded_workers: Dictionary = parsed.get("shop_workers", {})
+	max_visible_customers = int(save_data.get("max_visible_customers", max_visible_customers))
+	var loaded_workers: Dictionary = save_data.get("shop_workers", {})
 	shop_workers["restocker"] = int(loaded_workers.get("restocker", shop_workers["restocker"]))
 	shop_workers["cashier"] = int(loaded_workers.get("cashier", shop_workers["cashier"]))
 	restocker_hired = shop_workers["restocker"] > 0
 	cashier_hired = shop_workers["cashier"] > 0
-	checkouts = int(parsed.get("checkouts", checkouts))
+	checkouts = int(save_data.get("checkouts", checkouts))
 
-	factory_worker_pool_total = int(parsed.get("factory_worker_pool_total", factory_worker_pool_total))
-	factory_worker_pool_unassigned = int(parsed.get("factory_worker_pool_unassigned", factory_worker_pool_unassigned))
-	factory_cell_types = parsed.get("factory_cell_types", factory_cell_types)
-	factory_cell_workers = parsed.get("factory_cell_workers", factory_cell_workers)
-	factory_cell_progress = parsed.get("factory_cell_progress", factory_cell_progress)
+	factory_worker_pool_total = int(save_data.get("factory_worker_pool_total", factory_worker_pool_total))
+	factory_worker_pool_unassigned = int(save_data.get("factory_worker_pool_unassigned", factory_worker_pool_unassigned))
+	factory_cell_types = save_data.get("factory_cell_types", factory_cell_types)
+	factory_cell_workers = save_data.get("factory_cell_workers", factory_cell_workers)
+	factory_cell_progress = save_data.get("factory_cell_progress", factory_cell_progress)
 
-	_apply_offline_progress(int(parsed.get("timestamp", Time.get_unix_time_from_system())))
+	_apply_offline_progress(int(save_data.get("timestamp", Time.get_unix_time_from_system())))
 	emit_signal("state_changed")
+
+func _migrate_save_data(save_data: Dictionary, from_version: int) -> Dictionary:
+	var migrated := save_data.duplicate(true)
+	var version:int = from_version
+	if version < 2:
+		if not migrated.has("save_version"):
+			migrated["save_version"] = 2
+		if not migrated.has("factory_cell_progress"):
+			migrated["factory_cell_progress"] = {}
+		version = 2
+	migrated["save_version"] = version
+	return migrated
 
 func _apply_offline_progress(saved_timestamp: int) -> void:
 	var now := int(Time.get_unix_time_from_system())
